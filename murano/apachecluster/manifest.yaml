@@ -1,0 +1,9 @@
+Author: Sebastian Sch
+Description: Create cluster of Apache Httpd instances.
+Format: Heat.HOT/1.0
+FullName: io.murano.apps.HttpdCluster
+Name: Deploy Httpd Cluster
+Tags:
+- automation
+- heat
+Type: Application
