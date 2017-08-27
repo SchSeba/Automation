@@ -1,0 +1,156 @@
+heat_template_version: 2015-10-15
+
+description: A Group of Load Balanced Servers
+
+parameters:
+  flavor:
+    type: string
+    default: m1.medium
+    description: Flavor used for servers
+    constraints:
+    - custom_constraint: nova.flavor
+  image:
+    type: string
+    default: centos
+    description: Image used for servers
+    constraints:
+    - custom_constraint: glance.image
+
+  private_network:
+    type: string
+    default: new-net
+    description: Network used by the servers
+    constraints:
+    - custom_constraint: neutron.network
+  subnet:
+    type: string
+    default: new-subnet
+    description: Subnet on which the load balancer will be located
+    constraints:
+    - custom_constraint: neutron.subnet
+
+  key_name:
+    type: string
+    default: centos-ssh
+    description: ssh private key
+
+resources:
+
+  sec_group:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      rules:
+      - remote_ip_prefix: 0.0.0.0/0
+        protocol: tcp
+        port_range_min: 6379
+        port_range_max: 6379
+
+  subport1:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_param: private_network }
+      security_groups: [{ get_resource: sec_group }, default]
+      fixed_ips:
+        - subnet_id: { get_param: subnet }
+
+  subport2:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_param: private_network }
+      security_groups: [{ get_resource: sec_group }, default]
+      fixed_ips:
+        - subnet_id: { get_param: subnet }
+
+# A ResourceGroup with a nested server template
+# is a cleaner way of doing multiple servers.
+# These are placed inline for the sake of the
+# keeping the example in the App Catalog in a
+# single template.
+#
+# A Resource Group would be as follows:
+#
+#  group:
+#    type: OS::Heat::ResourceGroup
+#    properties:
+#      count: 2
+#      resource_def:
+#        type: lb_server.yaml
+#
+# The lb_server template would create the
+# server and member resources.
+
+  server1:
+    type: OS::Nova::Server
+    properties:
+      name: Server1
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: { get_param: key_name}
+      networks: [{ port: { get_resource: subport1 }}]
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: |
+            #! /bin/bash
+            yum install epel-release -y
+            yum install redis -y
+
+            systemctl enable redis.service
+            systemctl start redis.service
+
+            sed -i -e 's/bind 127.0.0.1/bind 0.0.0.0/g' /etc/redis.conf
+
+            sed -i -e 's/tcp-keepalive 300/tcp-keepalive 60/g' /etc/redis.conf
+
+            sed -i -e 's/# maxmemory-policy noeviction/maxmemory-policy noeviction/g' /etc/redis.conf
+
+            sed -i -e 's/# requirepass foobared/requirepass test/g' /etc/redis.conf
+
+            sed -i -e 's/appendonly no/appendonly yes/g' /etc/redis.conf
+
+            systemctl restart redis.service
+
+            echo AUTH UserPassword | redis-cli
+          params:
+            UserPassword: test
+            ipAddr1: {get_attr: [subport1, fixed_ips, 0, ip_address]}
+            ipAddr2: {get_attr: [subport2, fixed_ips, 0, ip_address]}
+
+  server2:
+    type: OS::Nova::Server
+    properties:
+      name: Server2
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: { get_param: key_name}
+      networks: [{ network: { get_param: private_network }}]
+      security_groups: [{ get_resource: sec_group }, default]
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: |
+            #! /bin/bash
+            yum install epel-release -y
+            yum install redis -y
+
+            systemctl enable redis.service
+            systemctl start redis.service
+
+
+
+            sed -i -e 's/bind 127.0.0.1/bind 0.0.0.0/g' /etc/redis.conf
+
+            sed -i -e 's/# requirepass foobared/requirepass test/g' /etc/redis.conf
+
+            sed -i -e 's/appendonly no/appendonly yes/g' /etc/redis.conf
+
+            sed -i -e 's/# slaveof <masterip> <masterport>/slaveof ipAddr1 6379/g' /etc/redis.conf
+
+            sed -i -e 's/# masterauth <master-password>/masterauth test/g' /etc/redis.conf
+
+            systemctl restart redis.service
+
+            echo AUTH UserPassword | redis-cli
+          params:
+            UserPassword: test
+            ipAddr1: {get_attr: [subport1, fixed_ips, 0, ip_address]}
