@@ -61,6 +61,14 @@ resources:
       fixed_ips:
         - subnet_id: { get_param: subnet }
 
+  haport:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_param: private_network }
+      security_groups: [{ get_resource: sec_group }, default]
+      fixed_ips:
+        - subnet_id: { get_param: subnet }
+
 # A ResourceGroup with a nested server template
 # is a cleaner way of doing multiple servers.
 # These are placed inline for the sake of the
@@ -92,11 +100,12 @@ resources:
         str_replace:
           template: |
             #! /bin/bash
+            setenforce 0
             yum install epel-release -y
             yum install redis -y
 
-            systemctl enable redis.service
-            systemctl start redis.service
+
+            #systemctl start redis.service
 
             sed -i -e 's/bind 127.0.0.1/bind 0.0.0.0/g' /etc/redis.conf
 
@@ -104,17 +113,80 @@ resources:
 
             sed -i -e 's/# maxmemory-policy noeviction/maxmemory-policy noeviction/g' /etc/redis.conf
 
-            sed -i -e 's/# requirepass foobared/requirepass test/g' /etc/redis.conf
-
             sed -i -e 's/appendonly no/appendonly yes/g' /etc/redis.conf
 
-            systemctl restart redis.service
 
-            echo AUTH UserPassword | redis-cli
+            cat <<EOT > /usr/lib/systemd/system/sentinel.service
+            [Unit]
+            Description=Redis persistent key-value database
+            After=network.target
+
+            [Service]
+            ExecStart=/usr/bin/redis-server /etc/redis-sentinel.conf --sentinel --daemonize no
+            ExecStop=/usr/bin/redis-shutdown
+            User=redis
+            Group=redis
+
+            [Install]
+            WantedBy=multi-user.target
+            EOT
+
+            mkdir /var/lib/redis/sentinel
+            chown redis:redis /var/lib/redis/sentinel
+
+            cat <<EOT > /etc/redis-sentinel.conf
+            port 26379
+
+            daemonize yes
+
+            pidfile "/var/run/sentinel.pid"
+
+            logfile "/var/log/redis/sentinel.log"
+
+            # Monitor redis_6379 master running on port 6379 and consider it in 0DOWN state with at
+            # least 1 quorum sentinels agree in order to start a failover.
+            # Sentinel will auto discover the slaves and rewrite the configuration files to add the slaves
+            # So you do not need to specify slaves. Also, note that the configuration file is rewritten.
+            # When a slave is promoted to master state.
+
+            sentinel monitor master01 ipAddr1 6379 1
+
+            # Specifies the password to use to authenticate with the master or slaves if required.
+            # For Redis instances mixed with 'auth' and 'nonauth', you need to ensure to set the same
+            # Password is required in all the instances. The demo Redis servers require no password.
+
+            #sentinel auth-pass master01 UserPassword
+
+            # Specifies the number of milliseconds the master, slave or sentinel should be consider
+            # down and unreachable in SDOWN state.
+
+            sentinel down-after-milliseconds master01 3000
+
+            # Specifies the failover timeout in milliseconds that because use in the following ways:
+            # * The time needed to restart a failover after a previous failover attempted on the same master
+            # * The time needed for a slave replicating to a wrong master with current configuration, to
+            # Force to replicate with the right master.
+            # * The time needed to cancel a failover that is already in progress but did not produce any
+            # Configuration change (The slave has not yet acknowledged as SLAVEOF NO ONE)
+            # * The max time a failover in progress waits for all the slaves to be reconfigured as slaves of the new master.
+
+            sentinel failover-timeout master01 6000
+
+            # Specify how many slaves we can reconfigure to point to the new slave during the failover.
+            # Recommends a low number if the slaves are used to serve query in order to avoid the slaves to
+            # Becomes unreachable while performing the synchronization with the master.
+
+            sentinel parallel-syncs master01 1
+
+            EOT
+            systemctl enable redis.service
+            systemctl enable sentinel.service
+
+            systemctl start sentinel.service
+            systemctl start redis.service
+
           params:
-            UserPassword: test
             ipAddr1: {get_attr: [subport1, fixed_ips, 0, ip_address]}
-            ipAddr2: {get_attr: [subport2, fixed_ips, 0, ip_address]}
 
   server2:
     type: OS::Nova::Server
@@ -130,27 +202,139 @@ resources:
         str_replace:
           template: |
             #! /bin/bash
+            setenforce 0
             yum install epel-release -y
             yum install redis -y
 
-            systemctl enable redis.service
-            systemctl start redis.service
-
-
-
             sed -i -e 's/bind 127.0.0.1/bind 0.0.0.0/g' /etc/redis.conf
-
-            sed -i -e 's/# requirepass foobared/requirepass test/g' /etc/redis.conf
 
             sed -i -e 's/appendonly no/appendonly yes/g' /etc/redis.conf
 
             sed -i -e 's/# slaveof <masterip> <masterport>/slaveof ipAddr1 6379/g' /etc/redis.conf
 
-            sed -i -e 's/# masterauth <master-password>/masterauth test/g' /etc/redis.conf
+            cat <<EOT > /usr/lib/systemd/system/sentinel.service
+            [Unit]
+            Description=Redis persistent key-value database
+            After=network.target
 
-            systemctl restart redis.service
+            [Service]
+            ExecStart=/usr/bin/redis-server /etc/redis-sentinel.conf --sentinel --daemonize no
+            ExecStop=/usr/bin/redis-shutdown
+            User=redis
+            Group=redis
 
-            echo AUTH UserPassword | redis-cli
+            [Install]
+            WantedBy=multi-user.target
+            EOT
+
+            mkdir /var/lib/redis/sentinel
+            chown redis:redis /var/lib/redis/sentinel
+
+            cat <<EOT > /etc/redis-sentinel.conf
+            port 26379
+
+            daemonize yes
+
+            pidfile "/var/run/sentinel.pid"
+
+            logfile "/var/log/redis/sentinel.log"
+
+            # Monitor redis_6379 master running on port 6379 and consider it in 0DOWN state with at
+            # least 1 quorum sentinels agree in order to start a failover.
+            # Sentinel will auto discover the slaves and rewrite the configuration files to add the slaves
+            # So you do not need to specify slaves. Also, note that the configuration file is rewritten.
+            # When a slave is promoted to master state.
+
+            sentinel monitor master01 ipAddr1 6379 1
+
+            # Specifies the password to use to authenticate with the master or slaves if required.
+            # For Redis instances mixed with 'auth' and 'nonauth', you need to ensure to set the same
+            # Password is required in all the instances. The demo Redis servers require no password.
+
+            #sentinel auth-pass master01 UserPassword
+
+            # Specifies the number of milliseconds the master, slave or sentinel should be consider
+            # down and unreachable in SDOWN state.
+
+            sentinel down-after-milliseconds master01 3000
+
+            # Specifies the failover timeout in milliseconds that because use in the following ways:
+            # * The time needed to restart a failover after a previous failover attempted on the same master
+            # * The time needed for a slave replicating to a wrong master with current configuration, to
+            # Force to replicate with the right master.
+            # * The time needed to cancel a failover that is already in progress but did not produce any
+            # Configuration change (The slave has not yet acknowledged as SLAVEOF NO ONE)
+            # * The max time a failover in progress waits for all the slaves to be reconfigured as slaves of the new master.
+
+            sentinel failover-timeout master01 6000
+
+            # Specify how many slaves we can reconfigure to point to the new slave during the failover.
+            # Recommends a low number if the slaves are used to serve query in order to avoid the slaves to
+            # Becomes unreachable while performing the synchronization with the master.
+
+            sentinel parallel-syncs master01 1
+
+            EOT
+            systemctl enable redis.service
+            systemctl enable sentinel.service
+
+            systemctl start sentinel.service
+            systemctl start redis.service
+
           params:
-            UserPassword: test
             ipAddr1: {get_attr: [subport1, fixed_ips, 0, ip_address]}
+
+  haserver:
+    type: OS::Nova::Server
+    properties:
+      name: haserver
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: { get_param: key_name}
+      networks: [{ port: { get_resource: haport }}]
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: |
+            #! /bin/bash
+            setenforce 0
+            yum install epel-release -y
+            yum install haproxy -y
+
+            cat <<EOT > /etc/haproxy/haproxy.cfg
+            # Specifies TCP timeout on connect for use by the frontend ft_redis
+            # Set the max time to wait for a connection attempt to a server to succeed
+            # The server and client side expected to acknowledge or send data.
+            defaults REDIS
+            mode tcp
+            timeout connect 3s
+            timeout server 6s
+            timeout client 6s
+
+            # Specifies listening socket for accepting client connections using the default
+            # REDIS TCP timeout and backend bk_redis TCP health check.
+            frontend ft_redis
+            bind *:6379 name redis
+            default_backend bk_redis
+
+            # Specifies the backend Redis proxy server TCP health settings
+            # Ensure it only forward incoming connections to reach a master.
+            backend bk_redis
+            option tcp-check
+            tcp-check connect
+            tcp-check send PING\r\n
+            tcp-check expect string +PONG
+            tcp-check send info\ replication\r\n
+            tcp-check expect string role:master
+            tcp-check send QUIT\r\n
+            tcp-check expect string +OK
+            server master ipAddr1:6379 check inter 1s
+            server slave ipAddr2:6379 check inter 1s
+            EOT
+
+            systemctl enable haproxy
+            systemctl start haproxy
+            
+          params:
+            ipAddr1: {get_attr: [subport1, fixed_ips, 0, ip_address]}
+            ipAddr2: {get_attr: [subport2, fixed_ips, 0, ip_address]}
