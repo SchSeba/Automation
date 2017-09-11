@@ -2,10 +2,10 @@ import React from 'react'
 
 class PlayerGames extends React.Component{
   constructor(props) {
-      super(props);
+      super(props)
       this.state = {
         game_list: this.props.game_list
-      };
+      }
 
       // bind button click
      this.onCreateGameClick = this.onCreateGameClick.bind(this);
@@ -30,11 +30,11 @@ class PlayerGames extends React.Component{
          } else{
              return "Play"
          }
-
+                                     
     }
 
     renderOpponent(game){
-        console.log(game);
+        console.log(game)
         if (game.opponent != null){
             return game.opponent.username
         } else {
@@ -91,3 +91,4 @@ PlayerGames.propTypes = {
 
 
 export default PlayerGames
+

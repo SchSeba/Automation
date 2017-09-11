@@ -20,8 +20,8 @@ class AvailableGames extends React.Component {
         let player_removed = this.props.game_list.filter(function(game) {
             return game.creator.id !== this.props.player.id
         }, this);
-
-
+        
+        
         if (player_removed.length > 0) {
             return player_removed.map(function (game) {
                     return <li key={game.id} className="list-group-item">
@@ -69,3 +69,4 @@ AvailableGames.propTypes = {
 
 
 export default AvailableGames
+

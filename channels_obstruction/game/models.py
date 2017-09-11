@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from django.contrib.auth.models import User
 from django.db import models
 from channels import Group
@@ -6,17 +7,11 @@ from datetime import datetime
 
 
 class Game(models.Model):
-    """
-    Represents a game of Obstruction between two players.
-    Initial values when created will just be a creator
-    who is also the current_turn and the cols and rows
-    """
-
+    winner = models.ForeignKey(
+        User, related_name='winner', null=True, blank=True)
     creator = models.ForeignKey(User, related_name='creator')
     opponent = models.ForeignKey(
         User, related_name='opponent', null=True, blank=True)
-    winner = models.ForeignKey(
-        User, related_name='winner', null=True, blank=True)
     cols = models.IntegerField(default=6)
     rows = models.IntegerField(default=6)
     current_turn = models.ForeignKey(User, related_name='current_turn')
@@ -121,7 +116,7 @@ class Game(models.Model):
         Send the updated game information and squares to the game's channel group
         """
         # imported here to avoid circular import
-        from game.serializers import GameSquareSerializer, GameSerializer, GameLogSerializer
+        from serializers import GameSquareSerializer, GameLogSerializer, GameSerializer
 
         squares = self.get_all_game_squares()
         square_serializer = GameSquareSerializer(squares, many=True)
@@ -131,6 +126,13 @@ class Game(models.Model):
         log_serializer = GameLogSerializer(log, many=True)
 
         game_serilizer = GameSerializer(self)
+
+        message = {'game': game_serilizer.data,
+                   'log': log_serializer.data,
+                   'squares': square_serializer.data}
+
+        game_group = 'game-{0}'.format(self.id)
+        Group(game_group).send({'text': json.dumps(message)})
 
     def next_player_turn(self):
         """
@@ -237,3 +239,5 @@ class GameLog(models.Model):
 
     def __unicode__(self):
         return 'Game #{0} Log'.format(self.game.id)
+
+

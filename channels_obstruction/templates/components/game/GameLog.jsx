@@ -12,7 +12,7 @@ class GameLog extends Component {
         this.sayIt = this.sayIt.bind(this)
 
     }
-
+    
     componentWillReceiveProps(newProps){
         this.setState({
             log_entries: newProps.log_entries
@@ -24,25 +24,25 @@ class GameLog extends Component {
         let log_sender = "System"
         if (entry.player != null){
             log_sender = entry.player.username
-
+            
         }
         return <li key={entry.id} className="list-group-item">
                  <span className="badge pull-left player-badge ">
                         {log_sender}
                 </span>
                         <span>{entry.text}</span>
-                </li>
+                </li>  
     }
 
     renderLog(){
-
+        
         if (this.state.log_entries){
           return this.state.log_entries.map(function(entry){
             return this.renderLogEntry(entry)
-           }.bind(this))
+           }.bind(this))      
         }
-
-
+        
+        
     }
 
 
@@ -51,11 +51,11 @@ class GameLog extends Component {
         // submit the chat text
         let chat_text = this.refs.log_chat.value
         // send the chat text to the server
-        this.props.sendSocketMessage({action: "chat_text_entered",
-                                      text: chat_text,
+        this.props.sendSocketMessage({action: "chat_text_entered", 
+                                      text: chat_text, 
                                       game_id: this.props.game_id })
     }
-
+    
 
     render () {
         return (
@@ -70,7 +70,7 @@ class GameLog extends Component {
                         <button onClick={this.sayIt} className="btn btn-default" type="button">Say It</button>
                     </span>
                 </div>
-
+             
             </div>
         )
     }

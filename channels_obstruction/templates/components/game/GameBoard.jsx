@@ -1,8 +1,8 @@
 import React, {Component, PropTypes} from 'react'
-import $ from 'jquery'
-import Websocket from 'react-websocket'
 import GameSquare from './GameSquare'
 import GameLog from './GameLog'
+import $ from 'jquery'
+import Websocket from 'react-websocket'
 
 class GameBoard extends Component {
     // lifecycle methods
@@ -17,11 +17,13 @@ class GameBoard extends Component {
         // bind button click
         this.sendSocketMessage = this.sendSocketMessage.bind(this)
         this.isPlayerTurn = this.isPlayerTurn.bind(this)
-
     }
 
     componentDidMount() {
-        this.getGame()
+        
+       this.getGame()
+       //this.getSquares()
+              
     }
 
     componentWillUnmount() {
@@ -31,13 +33,13 @@ class GameBoard extends Component {
     // custom methods
     getGame(){
          const game_url = 'http://localhost:8080/game-from-id/' + this.props.game_id
-
+         
          this.serverRequest = $.get(game_url, function (result) {
-
+             
             this.setState({
                 game: result.game,
                 log: result.log,
-                squares: result.squares
+                squares: result.squares,
             })
         }.bind(this))
     }
@@ -50,15 +52,15 @@ class GameBoard extends Component {
             })
         }.bind(this))
     }
-
+    
+    
 
     handleData(data) {
         //receives messages from the connected websocket
         let result = JSON.parse(data)
-        this.setState({game: result.game,
-                       log: result.log,
-                       squares: result.squares
-                       })
+        this.setState({game: result.game, 
+                       squares: result.squares, 
+                       log: result.log})
 
     }
 
@@ -76,23 +78,21 @@ class GameBoard extends Component {
         }
     }
 
-
-
     // ----  RENDER FUNCTIONS ---- //
     // --------------------------- //
     renderRow(row_num, cols) {
-
+       
         let row = cols.map(function(square){
-
+            
            // for each col, render a square for this row
            return <GameSquare game_creator={this.state.game.creator.id}
                               key={square.id}
                               owner={square.owner}
                               square_id={square.id}
                               possession_type={square.status}
-                              loc_x={parseInt(square.col)}
-                              loc_y={parseInt(square.row)}
-                              sendSocketMessage={this.sendSocketMessage}
+                              loc_x={parseInt(square.col)} 
+                              loc_y={parseInt(square.row)} 
+                              sendSocketMessage={this.sendSocketMessage} 
                               isPlayerTurn={this.isPlayerTurn}
                               />
         }.bind(this))
@@ -123,17 +123,17 @@ class GameBoard extends Component {
                     })
                     // with array of cols for this row, render it out
                     //board.push(this.renderRow(cur_row, row_cols))
-                   return this.renderRow(cur_row, row_cols )
+                   return this.renderRow(cur_row, row_cols ) 
                 }
-
+              
              }, this)
-
+    
         }else{
-            board = <tr><td>'LOADING...'</td></tr>
+            board = 'LOADING...'
         }
         return board
 
-
+        
     }
 
     currentTurn(){
@@ -142,19 +142,18 @@ class GameBoard extends Component {
                 // game is over
                 return <h3>The Winner: <span className="text-primary">{(this.state.game.current_turn.username)}</span></h3>
             }else{
-                return <h3>Current Turn:
+                return <h3>Current Turn: 
                     <span className="text-primary">{(this.state.game.current_turn.username)}</span>
                  </h3>
             }
-
+            
         }
     }
-
 
     render() {
         return (
             <div className="row">
-                <div className="col-sm-6">
+                <div className="col-sm-6"> 
                     {this.currentTurn()}
                     <table>
                         <tbody>
@@ -163,10 +162,10 @@ class GameBoard extends Component {
                     </table>
                 </div>
             <div className="col-sm-6">
-            <GameLog sendSocketMessage={this.sendSocketMessage}
+             <GameLog sendSocketMessage={this.sendSocketMessage} 
                          log_entries={this.state.log}
                          game_id={this.props.game_id} />
-                         </div>
+            </div>   
             <Websocket ref="socket" url={this.props.socket}
                     onMessage={this.handleData.bind(this)} reconnect={true}/>
             </div>
@@ -178,7 +177,7 @@ GameBoard.propTypes = {
     game_id: PropTypes.number,
     socket: PropTypes.string,
     current_user: PropTypes.object
-
+    
 }
 
 export default GameBoard
