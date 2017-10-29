@@ -3,10 +3,10 @@
     - name: Gather facts about previously created subnets
       os_subnets_facts:
         auth:
-          auth_url: http://10.3.3.99:35357
-          username: admin
-          password: qwer1234
-          project_name: admin
+          auth_url: http://0.0.0.0:35357
+          username: test
+          password: test
+          project_name: test
       register: subnets
 
     - name: test
@@ -17,10 +17,10 @@
     - name: Create Network
       os_network:
         auth:
-          auth_url: http://10.3.3.99:35357
-          username: admin
-          password: qwer1234
-          project_name: admin
+          auth_url: http://0.0.0.0:35357
+          username: test
+          password: test
+          project_name: test
         state: present
         name: test-net-1
       register: cmdb_status
@@ -32,10 +32,10 @@
     - name: Create subnet
       os_subnet:
         auth:
-            auth_url: http://10.3.3.99:35357
-            username: admin
-            password: qwer1234
-            project_name: admin
+            auth_url: http://0.0.0.0:35357
+            username: test
+            password: test
+            project_name: test
         state: present
         network_name: test-net-1
         name: test-sub-1
@@ -44,10 +44,10 @@
     - name: Connect to Router
       os_router:
         auth:
-          auth_url: http://10.3.3.99:35357
-          username: admin
-          password: qwer1234
-          project_name: admin
+          auth_url: http://0.0.0.0:35357
+          username: test
+          password: test
+          project_name: test
         name: demo-router
         interfaces:
           - test-sub-1
