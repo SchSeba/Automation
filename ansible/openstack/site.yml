@@ -1,0 +1,54 @@
+- hosts: localhost
+  tasks:
+    - name: Gather facts about previously created subnets
+      os_subnets_facts:
+        auth:
+          auth_url: http://10.3.3.99:35357
+          username: admin
+          password: qwer1234
+          project_name: admin
+      register: subnets
+
+    - name: test
+      get_subnet:
+        data: "{{ subnets }}"
+      register: subnet
+
+    - name: Create Network
+      os_network:
+        auth:
+          auth_url: http://10.3.3.99:35357
+          username: admin
+          password: qwer1234
+          project_name: admin
+        state: present
+        name: test-net-1
+      register: cmdb_status
+
+    - fail:
+        msg: "Network already exist"
+      when: cmdb_status.changed == false
+
+    - name: Create subnet
+      os_subnet:
+        auth:
+            auth_url: http://10.3.3.99:35357
+            username: admin
+            password: qwer1234
+            project_name: admin
+        state: present
+        network_name: test-net-1
+        name: test-sub-1
+        cidr: "{{ subnet.subnet }}"
+
+    - name: Connect to Router
+      os_router:
+        auth:
+          auth_url: http://10.3.3.99:35357
+          username: admin
+          password: qwer1234
+          project_name: admin
+        name: demo-router
+        interfaces:
+          - test-sub-1
+
