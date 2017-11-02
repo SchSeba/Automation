@@ -1,0 +1,10 @@
+{% for group in groups %}
+{% if group != 'ssh-gw' and group != 'ungrouped' %}
+[{{group}}]
+{% for servers in groups[group] %}
+{% if servers != sshgw %}
+{{servers}}  ansible_ssh_common_args="-o ProxyCommand='ssh -W %h:%p cloud-user@{{ sshgw }}'"
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}

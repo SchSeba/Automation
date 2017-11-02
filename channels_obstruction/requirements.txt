@@ -1,6 +1,0 @@
-channels
-daphne
-Django
-django-webpack-loader
-djangorestframework
-

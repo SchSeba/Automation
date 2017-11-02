@@ -1,0 +1,38 @@
+- name: Delete instances
+  include: deleteInstances.yml object='{{ item }}'
+  with_items: " {{ servertypes }}"
+
+- name: Get Subnet ID
+  os_subnets_facts:
+    auth: "{{ auth }}"
+    name: "sub-{{ enviroment }}"
+  register: subnetData
+
+- set_fact:
+    network_id: "{{ subnetData['ansible_facts']['openstack_subnets'][0]['network_id'] }}"
+
+- name: Get All ports by network
+  os_port_facts:
+    auth: "{{ auth }}"
+    filters:
+      network_id: "{{ network_id }}"
+  register: port_facts
+
+- name: delete Router interfaces on network
+  delete_router_interface:
+    auth: "{{ auth }}"
+    name: "{{ router_name }}"
+    network: "net-{{ enviroment }}"
+    portsOnNetwork: "{{ port_facts }}"
+
+- name: Delete subnet
+  os_subnet:
+    auth: "{{ auth }}"
+    state: absent
+    name: "sub-{{ enviroment }}"
+
+- name: Delete Network
+  os_network:
+    auth: "{{ auth }}"
+    state: absent
+    name: "net-{{ enviroment }}"

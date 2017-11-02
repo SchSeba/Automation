@@ -1,0 +1,19 @@
+subnets: 200
+auth_url: 0.0.0.0
+username: temp
+password: temp
+project_name: temp
+sshgw: 0.0.0.0
+router_name: test-env
+enviroment: test
+key: temp
+inventory_file_dest: /etc/ansible/inventory
+auth:
+  auth_url: "{{ auth_url }}"
+  username: "{{ username }}"
+  password: "{{ password }}"
+  project_name: "{{ project_name }}"
+servertypes:
+ - {name: test, number: 2, flavor: m1.small, image: rhel7.3,volume_size: 20}
+ - {name: app, number: 1, flavor: m1.small, image: rhel7.3,volume_size: 20}
+

@@ -1,0 +1,38 @@
+- set_fact:
+    instanceName: "{{ object.name }}"
+
+- name: Get instance Data
+  os_server_facts:
+     auth:
+       auth_url: "{{ auth_url }}"
+       username: "{{ username }}"
+       password: "{{ password }}"
+       project_name: "{{ project_name }}"
+     server: "vm-{{ enviroment }}-{{ instanceName }}-*"
+  register: instace_data
+
+- name: Delete instance
+  os_server:
+     state: absent
+     auth:
+       auth_url: "{{ auth_url }}"
+       username: "{{ username }}"
+       password: "{{ password }}"
+       project_name: "{{ project_name }}"
+     name: "vm-{{ enviroment }}-{{ instanceName }}-{{ item }}"
+  with_sequence: count="{{ object.number }}"
+
+- set_fact:
+    servers: "{{ instace_data['ansible_facts']['openstack_servers'] }}"
+
+- name: Delete Volumes
+  os_volume:
+    auth:
+       auth_url: "{{ auth_url }}"
+       username: "{{ username }}"
+       password: "{{ password }}"
+       project_name: "{{ project_name }}"
+    display_name: "{{ item['volumes'][0]['id'] }}"
+    state: absent
+  with_items: "{{ instace_data['ansible_facts']['openstack_servers'] }}"
+

@@ -1,0 +1,7 @@
+- hosts: localhost
+  vars_prompt:
+      - name: "password"
+        promt: "Enter Password"
+        private: yes
+  roles:
+    - role: CreateEnv

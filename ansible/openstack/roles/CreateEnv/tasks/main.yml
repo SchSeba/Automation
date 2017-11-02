@@ -1,0 +1,43 @@
+- name: Gather facts about previously created subnets
+  os_subnets_facts:
+    auth: "{{ auth }}"
+  register: subnets
+
+- name: Create Network
+  os_network:
+    state: present
+    auth: "{{ auth }}"
+    name: "net-{{ enviroment }}"
+  register: cmdb_status
+
+- name: Get Cidr
+  get_subnet:
+    data: "{{ subnets }}"
+  register: subnet
+  when: cmdb_status.changed == true
+
+- name: Create Subnet
+  os_subnet:
+    auth: "{{ auth }}"
+    state: present
+    network_name: "net-{{ enviroment }}"
+    name: "sub-{{ enviroment }}"
+    cidr: "{{ subnet.subnet }}"
+  when: cmdb_status.changed == true
+
+- name: Connect to Router
+  os_router:
+    auth: "{{ auth }}"
+    name: "{{ router_name }}"
+    interfaces:
+      - "sub-{{ enviroment }}"
+  when: cmdb_status.changed == true
+
+- name: Create Instances
+  include: createInstance.yml object='{{ item }}'
+  with_items: " {{ servertypes }}"
+
+- name: Create inventory file
+  template:
+    src: inventory.j2
+    dest: "{{ inventory_file_dest }}/{{ enviroment }}"

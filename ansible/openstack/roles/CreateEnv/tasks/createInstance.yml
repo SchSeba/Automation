@@ -1,0 +1,39 @@
+- set_fact:
+    instanceName: "{{ object.name }}"
+
+- set_fact:
+    image: "{{ object.image }}"
+
+- set_fact:
+    flavor: "{{ object.flavor }}"
+
+- set_fact:
+    volume_size: "{{ object.volume_size }}"
+
+- name: Create instances
+  os_server:
+     state: present
+     auth: "{{ auth }}"
+     name: "vm-{{ enviroment }}-{{ instanceName }}-{{ item }}"
+     image: "{{ image }}"
+     key_name: "{{ key }}"
+     timeout: 200
+     flavor: "{{ flavor }}"
+     security_groups: default
+     network: "net-{{ enviroment }}"
+     auto_ip: false
+     boot_from_volume: true
+     availability_zone: nova
+     volume_size: " {{ volume_size }}"
+     meta:
+       hostname: "vm-{{ enviroment }}-{{ instanceName }}-{{ item }}"
+       group: "{{ instanceName }}"
+  register: machine
+  with_sequence: count="{{ object.number }}"
+
+- name: Add instances to inventory
+  add_host:
+    name: "{{ item['openstack']['private_v4'] }}"
+    groups: "{{ instanceName }}"
+  with_items: "{{ machine.results }}" 
+
